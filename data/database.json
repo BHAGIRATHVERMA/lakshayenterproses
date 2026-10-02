@@ -1899,7 +1899,7 @@
     "popupVideoUrl": "https://youtu.be/mYLjiHzf8-4",
     "popupAdTimer": 30,
     "popupAdEnabled": true,
-    "enableMapService": true,
+    "enableMapService": false,
     "enableYoutubeService": true,
     "enableVideoWatchService": true,
     "videoLikeCommentBonusCoins": 2,

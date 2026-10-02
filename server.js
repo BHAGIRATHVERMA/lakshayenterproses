@@ -80,6 +80,42 @@ app.get('/api/ping', (req, res) => {
   });
 });
 
+// Helper to detect if user request is originating from Native Android APK or Web Browser
+function detectClientPlatform(req) {
+  const ua = req.headers['user-agent'] || '';
+  const qPlatform = (req.query && req.query.platform) || '';
+  const bPlatform = (req.body && req.body.platform) || '';
+  const hPlatform = req.headers['x-app-platform'] || req.headers['x-platform'] || '';
+
+  if (
+    qPlatform.toLowerCase() === 'apk' ||
+    bPlatform.toLowerCase() === 'apk' ||
+    hPlatform.toLowerCase() === 'apk' ||
+    ua.includes('MapReviewPay-Android-App') ||
+    ua.includes('MapReviewPay') ||
+    ua.includes('AndroidApp')
+  ) {
+    return 'apk';
+  }
+  return 'web';
+}
+
+// Android APK Direct Download Handler
+app.get(['/downloads/MapReviewPay.apk', '/downloads/app.apk', '/app.apk'], (req, res) => {
+  const apkPath = path.join(__dirname, 'public', 'downloads', 'MapReviewPay.apk');
+  const fallbackApkPath = path.join(__dirname, 'downloads', 'MapReviewPay.apk');
+
+  const finalPath = fs.existsSync(apkPath) ? apkPath : (fs.existsSync(fallbackApkPath) ? fallbackApkPath : null);
+
+  if (finalPath) {
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Content-Disposition', 'attachment; filename="MapReviewPay.apk"');
+    return res.sendFile(finalPath);
+  }
+
+  res.status(404).send('APK file not found. Please contact admin.');
+});
+
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
@@ -96,6 +132,11 @@ function requireUserAuth(req, res, next) {
           success: false,
           message: 'Aapka account admin dwara deactivate/block kar diya gaya hai. Kripya admin se sampark karein.'
         });
+      }
+      const platform = detectClientPlatform(req);
+      if (platform === 'apk' && user.lastPlatform !== 'apk') {
+        user.lastPlatform = 'apk';
+        db.save();
       }
       req.user = user;
       return next();
@@ -318,7 +359,8 @@ app.post('/api/auth/login', (req, res) => {
 
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
   const userAgent = req.headers['user-agent'] || '';
-  db.recordUserLogin(user.id, clientIp, userAgent);
+  const platform = detectClientPlatform(req);
+  db.recordUserLogin(user.id, clientIp, userAgent, platform);
 
   res.json({
     success: true,
@@ -412,7 +454,8 @@ app.post('/api/auth/google-login', async (req, res) => {
 
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
     const userAgent = req.headers['user-agent'] || '';
-    db.recordUserLogin(user.id, clientIp, userAgent);
+    const platform = detectClientPlatform(req);
+    db.recordUserLogin(user.id, clientIp, userAgent, platform);
 
     return res.json({
       success: true,
@@ -812,14 +855,16 @@ app.post('/api/track/visit', (req, res) => {
   const userId = (req.session && req.session.userId) ? req.session.userId : null;
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
   const userAgent = req.headers['user-agent'] || '';
-  const entry = db.recordVisit(pagePath || '/', ip, userAgent, userId);
-  res.json({ success: true, visit: entry });
+  const platform = detectClientPlatform(req);
+  const entry = db.recordVisit(pagePath || '/', ip, userAgent, userId, platform);
+  res.json({ success: true, visit: entry, platform });
 });
 
 app.post('/api/track/heartbeat', requireUserAuth, (req, res) => {
   const { path: pagePath, seconds = 30 } = req.body || {};
-  const tracking = db.recordUserHeartbeat(req.user.id, pagePath || '/dashboard.html', seconds);
-  res.json({ success: true, tracking });
+  const platform = detectClientPlatform(req);
+  const tracking = db.recordUserHeartbeat(req.user.id, pagePath || '/dashboard.html', seconds, platform);
+  res.json({ success: true, tracking, platform });
 });
 
 // -------------------------------------------------------------

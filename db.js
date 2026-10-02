@@ -354,7 +354,7 @@ const defaultData = {
     watchVideoDurationSeconds: 240, // 4 minutes
     watchVideoRewardCoins: 5, // 5 coins per video (20 videos * 5 = ₹100 daily)
     videoLikeCommentBonusCoins: 2, // 2 extra coins for like & comment
-    enableMapService: true, // Master switch for Google Map Reviews
+    enableMapService: false, // Master switch for Google Map Reviews (FULL DISABLED PER USER REQUEST)
     enableYoutubeService: true, // Master switch for YouTube Subscribe
     enableVideoWatchService: true, // Master switch for Video Watch & Earn
     googleClientId: '', // Google OAuth 2.0 Client ID
@@ -549,6 +549,9 @@ class Database {
           u.referredByCode = ref.referralCode;
           hasChanges = true;
         }
+      }
+      if (!u.lastPlatform) {
+        u.lastPlatform = (u.deviceInfo && u.deviceInfo.includes('MapReviewPay-Android-App')) ? 'apk' : 'web';
       }
     });
 
@@ -1606,7 +1609,7 @@ class Database {
     }
   }
 
-  recordVisit(pagePath = '/', ip = '', userAgent = '', userId = null) {
+  recordVisit(pagePath = '/', ip = '', userAgent = '', userId = null, platform = 'web') {
     this.ensureAnalytics();
     this.data.analytics.totalVisits = (this.data.analytics.totalVisits || 0) + 1;
     
@@ -1623,6 +1626,7 @@ class Database {
         userMobile = user.mobile;
         user.lastActiveAt = new Date().toISOString();
         user.lastPage = cleanPath;
+        if (platform) user.lastPlatform = platform;
       }
     }
 
@@ -1634,6 +1638,7 @@ class Database {
       userId: userId || null,
       userName: userName,
       userMobile: userMobile,
+      platform: platform || 'web',
       timestamp: new Date().toISOString()
     };
 
@@ -1649,7 +1654,7 @@ class Database {
     return visitEntry;
   }
 
-  recordUserLogin(userId, ip = '', userAgent = '') {
+  recordUserLogin(userId, ip = '', userAgent = '', platform = 'web') {
     const user = this.getUserById(userId);
     if (!user) return;
 
@@ -1657,22 +1662,27 @@ class Database {
     user.lastLoginAt = new Date().toISOString();
     user.lastActiveAt = new Date().toISOString();
     user.deviceInfo = userAgent;
+    user.lastPlatform = platform || 'web';
     this.save();
   }
 
-  recordUserHeartbeat(userId, pagePath = '/dashboard.html', seconds = 30) {
+  recordUserHeartbeat(userId, pagePath = '/dashboard.html', seconds = 30, platform = null) {
     const user = this.getUserById(userId);
     if (!user) return null;
 
     user.totalTimeSpentSeconds = (user.totalTimeSpentSeconds || 0) + Number(seconds);
     user.lastActiveAt = new Date().toISOString();
     user.lastPage = pagePath;
+    if (platform) {
+      user.lastPlatform = platform;
+    }
     this.save();
 
     return {
       userId: user.id,
       totalTimeSpentSeconds: user.totalTimeSpentSeconds,
-      formattedTime: this.formatTimeDuration(user.totalTimeSpentSeconds)
+      formattedTime: this.formatTimeDuration(user.totalTimeSpentSeconds),
+      platform: user.lastPlatform || 'web'
     };
   }
 
@@ -1697,12 +1707,24 @@ class Database {
     const users = this.getUsers();
     let totalUserSeconds = 0;
     let onlineUsersCount = 0;
+    let onlineAppUsersCount = 0;
+    let onlineWebUsersCount = 0;
+
     const usersTracking = users.map(u => {
       const timeSpent = u.totalTimeSpentSeconds || 0;
       totalUserSeconds += timeSpent;
       const lastActiveMs = u.lastActiveAt ? new Date(u.lastActiveAt).getTime() : 0;
       const isOnline = lastActiveMs >= threeMinutesAgo;
-      if (isOnline) onlineUsersCount++;
+      const platform = (u.lastPlatform === 'apk' || (u.deviceInfo && u.deviceInfo.includes('MapReviewPay-Android-App'))) ? 'apk' : 'web';
+
+      if (isOnline) {
+        onlineUsersCount++;
+        if (platform === 'apk') {
+          onlineAppUsersCount++;
+        } else {
+          onlineWebUsersCount++;
+        }
+      }
 
       return {
         id: u.id,
@@ -1711,6 +1733,9 @@ class Database {
         city: u.city,
         status: u.status,
         planName: u.planName,
+        platform: platform,
+        lastPlatform: platform,
+        deviceInfo: u.deviceInfo || '',
         loginCount: u.loginCount || 1,
         totalTimeSpentSeconds: timeSpent,
         formattedTimeSpent: this.formatTimeDuration(timeSpent),
@@ -1738,6 +1763,8 @@ class Database {
       totalUserEngagementSeconds: totalUserSeconds,
       totalFormattedEngagement: this.formatTimeDuration(totalUserSeconds),
       onlineUsersCount: onlineUsersCount,
+      onlineAppUsersCount: onlineAppUsersCount,
+      onlineWebUsersCount: onlineWebUsersCount,
       usersTracking: usersTracking,
       recentVisits: (this.data.analytics.visitsHistory || []).slice(0, 50)
     };
