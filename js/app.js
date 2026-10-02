@@ -879,18 +879,22 @@ function renderWatchTasks(task) {
   let completedCount = 0;
   let earnedCoins = 0;
   task.items.forEach(item => {
-    const rewardCoins = item.reward !== undefined ? item.reward : 5;
+    const durSec = Number(item.durationSeconds) || 180;
+    const mins = Math.floor(durSec / 60);
+    const secs = durSec % 60;
+    const timeLabel = secs > 0 ? `${mins}m ${secs}s` : `${mins} Min`;
+    const numReward = item.reward !== undefined ? Number(item.reward) : Math.round(((durSec / 60) * 0.80) * 100) / 100;
+    const rewardCoins = numReward.toFixed(2).replace(/\.00$/, '');
+
     if (item.completed) {
       completedCount++;
-      earnedCoins += rewardCoins;
+      earnedCoins += numReward;
     }
 
     const card = document.createElement('div');
     card.className = `p-4 sm:p-5 rounded-2xl border-2 transition-all flex flex-col justify-between ${
       item.completed ? 'bg-emerald-50/50 border-emerald-300' : 'bg-white border-slate-200 hover:border-amber-400 hover:shadow-md'
     }`;
-
-    const durationMins = Math.round((item.durationSeconds || 240) / 60);
 
     card.innerHTML = `
       <div>
@@ -902,10 +906,10 @@ function renderWatchTasks(task) {
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
               item.completed ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-900 border border-amber-300'
             }">
-              <i class="fa-solid fa-clock mr-1"></i>${durationMins} Mins (${item.durationSeconds || 240}s)
+              <i class="fa-solid fa-clock mr-1"></i>${timeLabel} (${durSec}s)
             </span>
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-800 border border-indigo-200">
-              🪙 +${rewardCoins} Coins
+              🪙 +₹${rewardCoins} Coins
             </span>
           </div>
         </div>
@@ -915,7 +919,7 @@ function renderWatchTasks(task) {
           <span>${escapeHtml(item.title || `Video Task #${item.taskIndex}`)}</span>
         </h4>
         <p class="text-xs text-slate-500 mb-4">
-          ${item.completed ? `Aapne yeh video pura dekh liya hai aur ₹${rewardCoins} Coins aapke wallet me add ho chuke hain!` : `Hamari website ke andar hi pura ${durationMins} minute dekhein aur turant ₹${rewardCoins} Coins earn karein.`}
+          ${item.completed ? `Aapne yeh video pura dekh liya hai aur ₹${rewardCoins} Coins aapke wallet me add ho chuke hain!` : `Pura video (${timeLabel}) dekhein aur turant ₹${rewardCoins} Coins earn karein (₹0.80/Min).`}
         </p>
       </div>
 
@@ -929,9 +933,9 @@ function renderWatchTasks(task) {
             </div>
             `
             : `
-            <button onclick="openWatchPlayerModal('${task.id}', ${item.taskIndex}, '${encodeURIComponent(item.videoUrl)}', '${encodeURIComponent(item.title || '')}', ${item.durationSeconds || 240}, ${rewardCoins})" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-xs shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2">
+            <button onclick="openWatchPlayerModal('${task.id}', ${item.taskIndex}, '${encodeURIComponent(item.videoUrl)}', '${encodeURIComponent(item.title || '')}', ${durSec}, ${rewardCoins})" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-xs shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2">
               <i class="fa-solid fa-play"></i>
-              <span>Watch Video (Pura ${durationMins} Min Dekhein • ₹${rewardCoins})</span>
+              <span>Watch Video (${timeLabel} • ₹${rewardCoins})</span>
             </button>
             `
         }
@@ -942,10 +946,10 @@ function renderWatchTasks(task) {
   });
 
   if (completedCountEl) completedCountEl.innerText = completedCount;
-  if (earnedCoinsEl) earnedCoinsEl.innerText = earnedCoins;
+  if (earnedCoinsEl) earnedCoinsEl.innerText = (Math.round(earnedCoins * 100) / 100).toFixed(2).replace(/\.00$/, '');
 }
 
-function openWatchPlayerModal(taskId, taskIndex, encodedUrl, encodedTitle, durationSeconds = 240, reward = 10) {
+function openWatchPlayerModal(taskId, taskIndex, encodedUrl, encodedTitle, durationSeconds = 180, reward = 2.4) {
   const videoUrl = decodeURIComponent(encodedUrl);
   const title = decodeURIComponent(encodedTitle) || `Video Task #${taskIndex}`;
   
@@ -970,12 +974,18 @@ function openWatchPlayerModal(taskId, taskIndex, encodedUrl, encodedTitle, durat
   if (directYtLink) directYtLink.href = videoUrl;
   if (checkLikeComment) checkLikeComment.checked = false;
 
+  const totalSecs = Number(durationSeconds) || 180;
+  const mins = Math.floor(totalSecs / 60);
+  const secs = totalSecs % 60;
+  const timeLabel = secs > 0 ? `${mins}m ${secs}s` : `${mins} Min`;
+
   currentActiveWatchTask = {
     taskId,
     taskIndex,
-    durationSeconds: Number(durationSeconds) || 240,
+    durationSeconds: totalSecs,
     elapsedSeconds: 0,
-    reward: Number(reward) || 10,
+    reward: Number(reward) || 2.4,
+    timeLabel: timeLabel,
     isCompleted: false
   };
 
@@ -989,7 +999,7 @@ function openWatchPlayerModal(taskId, taskIndex, encodedUrl, encodedTitle, durat
     claimContainer.innerHTML = `
       <button id="claimWatchRewardBtn" disabled class="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-500 font-bold text-xs flex items-center justify-center gap-2 cursor-not-allowed transition-all opacity-80">
         <i class="fa-solid fa-lock text-rose-400"></i>
-        <span>Watching... (Complete 4 Mins to Claim Reward)</span>
+        <span>Watching... (Watch full ${timeLabel} to Claim Reward)</span>
       </button>
     `;
   }
@@ -1012,7 +1022,7 @@ function openWatchPlayerModal(taskId, taskIndex, encodedUrl, encodedTitle, durat
     if (secondsDisplay) secondsDisplay.innerText = currentActiveWatchTask.elapsedSeconds;
     updateTimerDisplay(remaining);
 
-    // When 4 minutes (or target duration) are completed
+    // When target duration is completed
     if (remaining <= 0) {
       clearInterval(watchTimerInterval);
       currentActiveWatchTask.isCompleted = true;
@@ -1048,7 +1058,7 @@ function unlockWatchRewardClaim() {
   if (claimContainer && currentActiveWatchTask) {
     const isLiked = checkLikeComment && checkLikeComment.checked;
     const bonus = isLiked ? (portalSettings.videoLikeCommentBonusCoins || 2) : 0;
-    const totalClaimReward = currentActiveWatchTask.reward + bonus;
+    const totalClaimReward = Math.round((currentActiveWatchTask.reward + bonus) * 100) / 100;
     const bonusLabel = isLiked ? ` (+₹${bonus} Like/Comment Bonus)` : '';
 
     claimContainer.innerHTML = `
@@ -1089,11 +1099,12 @@ async function claimCurrentVideoReward() {
       await loadTodayWatchTasks();
 
       const bonusNote = data.bonusCoins > 0 ? ` (Isme +${data.bonusCoins} Like & Comment bonus shamil hai)` : '';
+      const displayReward = Number(data.rewardCoins || currentActiveWatchTask.reward).toFixed(2).replace(/\.00$/, '');
 
       Swal.fire({
         icon: 'success',
-        title: `🎉 ₹${data.rewardCoins} Coins Credited!`,
-        text: `Aapne video pura 4 minute dekha hai. Instant ₹${data.rewardCoins} Coins aapke wallet me add ho gaye hain!${bonusNote}`,
+        title: `🎉 ₹${displayReward} Coins Credited!`,
+        text: `Aapne video pura ${currentActiveWatchTask.timeLabel || ''} dekha hai. Instant ₹${displayReward} Coins aapke wallet me add ho gaye hain!${bonusNote}`,
         confirmButtonColor: '#10b981',
         confirmButtonText: 'Great! Agla Video Dekhein'
       });

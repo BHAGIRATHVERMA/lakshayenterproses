@@ -134,6 +134,8 @@ app.get('/api/public/settings', (req, res) => {
       enableVideoWatchService: settings.enableVideoWatchService !== undefined ? settings.enableVideoWatchService : true,
       videoLikeCommentBonusCoins: settings.videoLikeCommentBonusCoins !== undefined ? settings.videoLikeCommentBonusCoins : 2,
       referralBonusCoins: settings.referralBonusCoins !== undefined ? settings.referralBonusCoins : 50,
+      googleClientId: settings.googleClientId || '',
+      enableGoogleLogin: settings.enableGoogleLogin !== undefined ? settings.enableGoogleLogin : true,
       plans: settings.plans
     }
   });
@@ -330,6 +332,109 @@ app.post('/api/auth/login', (req, res) => {
       walletCoins: user.walletCoins || 0
     }
   });
+});
+
+app.post('/api/auth/google-login', async (req, res) => {
+  try {
+    const { credential, email, name, googleId, picture, referralCode } = req.body;
+
+    let userEmail = (email || '').trim().toLowerCase();
+    let userName = name ? name.trim() : '';
+    let userGoogleId = googleId || null;
+    let userPicture = picture || '';
+
+    // If Google GIS ID Token (JWT) is provided
+    if (credential) {
+      try {
+        const gRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+        const tokenData = await gRes.json();
+        
+        if (tokenData && tokenData.email) {
+          userEmail = tokenData.email.toLowerCase();
+          userName = tokenData.name || tokenData.given_name || userName;
+          userGoogleId = tokenData.sub || userGoogleId;
+          userPicture = tokenData.picture || userPicture;
+        } else {
+          const parts = credential.split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+            if (payload && payload.email) {
+              userEmail = payload.email.toLowerCase();
+              userName = payload.name || payload.given_name || userName;
+              userGoogleId = payload.sub || userGoogleId;
+              userPicture = payload.picture || userPicture;
+            }
+          }
+        }
+      } catch (tokenErr) {
+        console.warn('Google token verify note:', tokenErr.message);
+        try {
+          const parts = credential.split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+            if (payload && payload.email) {
+              userEmail = payload.email.toLowerCase();
+              userName = payload.name || userName;
+              userGoogleId = payload.sub || userGoogleId;
+              userPicture = payload.picture || userPicture;
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    if (!userEmail && !userGoogleId) {
+      return res.status(400).json({ success: false, message: 'Google authentication details missing or invalid.' });
+    }
+
+    const result = db.findOrCreateGoogleUser({
+      email: userEmail,
+      name: userName,
+      googleId: userGoogleId,
+      picture: userPicture,
+      referralCode
+    });
+
+    if (!result || !result.user) {
+      return res.status(500).json({ success: false, message: 'Could not create or retrieve user account.' });
+    }
+
+    if (result.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: 'Aapka account admin dwara deactivate/block kar diya gaya hai. Kripya admin se sampark karein.'
+      });
+    }
+
+    const user = result.user;
+    req.session.isAdmin = false;
+    req.session.userId = user.id;
+
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
+    const userAgent = req.headers['user-agent'] || '';
+    db.recordUserLogin(user.id, clientIp, userAgent);
+
+    return res.json({
+      success: true,
+      message: result.isNew 
+        ? '🎉 Welcome! Aapka account Google se instant activate ho gaya hai!' 
+        : '🎉 Google login successful!',
+      isNew: result.isNew,
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        avatar: user.avatar,
+        mobile: user.mobile || user.email,
+        status: user.status,
+        planName: user.planName,
+        walletCoins: user.walletCoins || 0
+      }
+    });
+  } catch (err) {
+    console.error('Google login route error:', err);
+    return res.status(500).json({ success: false, message: 'Google login processing failed: ' + err.message });
+  }
 });
 
 app.post('/api/auth/admin-login', (req, res) => {
@@ -1131,6 +1236,8 @@ app.post('/api/admin/settings/update', requireAdminAuth, (req, res) => {
   if (enableYoutubeService !== undefined) updates.enableYoutubeService = Boolean(enableYoutubeService);
   if (enableVideoWatchService !== undefined) updates.enableVideoWatchService = Boolean(enableVideoWatchService);
   if (videoLikeCommentBonusCoins !== undefined && videoLikeCommentBonusCoins !== '') updates.videoLikeCommentBonusCoins = Number(videoLikeCommentBonusCoins);
+  if (req.body.googleClientId !== undefined) updates.googleClientId = req.body.googleClientId.trim();
+  if (req.body.enableGoogleLogin !== undefined) updates.enableGoogleLogin = Boolean(req.body.enableGoogleLogin);
 
   const updated = db.updateSettings(updates);
   res.json({ success: true, message: 'Settings updated successfully', settings: updated });

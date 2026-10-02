@@ -1694,6 +1694,12 @@ async function loadAdminSettings() {
       if (document.getElementById('settingPopupAdEnabled')) {
         document.getElementById('settingPopupAdEnabled').checked = s.popupAdEnabled !== false;
       }
+      if (document.getElementById('settingGoogleClientId')) {
+        document.getElementById('settingGoogleClientId').value = s.googleClientId || '';
+      }
+      if (document.getElementById('settingEnableGoogleLogin')) {
+        document.getElementById('settingEnableGoogleLogin').checked = s.enableGoogleLogin !== false;
+      }
       if (s.qrImage) {
         document.getElementById('adminCurrentQrImg').src = window.getMediaUrl ? window.getMediaUrl(s.qrImage) : s.qrImage;
       }
@@ -1762,6 +1768,8 @@ async function handleSettingsUpdate(e) {
   const popupVideoUrl = document.getElementById('settingPopupVideoUrl') ? document.getElementById('settingPopupVideoUrl').value.trim() : '';
   const popupAdTimer = document.getElementById('settingPopupAdTimer') ? document.getElementById('settingPopupAdTimer').value : 30;
   const popupAdEnabled = document.getElementById('settingPopupAdEnabled') ? document.getElementById('settingPopupAdEnabled').checked : true;
+  const googleClientId = document.getElementById('settingGoogleClientId') ? document.getElementById('settingGoogleClientId').value.trim() : '';
+  const enableGoogleLogin = document.getElementById('settingEnableGoogleLogin') ? document.getElementById('settingEnableGoogleLogin').checked : true;
   const adminPassword = document.getElementById('settingAdminPassword').value.trim();
 
   const btn = document.getElementById('saveSettingsBtn');
@@ -1786,6 +1794,8 @@ async function handleSettingsUpdate(e) {
         popupVideoUrl,
         popupAdTimer,
         popupAdEnabled,
+        googleClientId,
+        enableGoogleLogin,
         adminPassword
       })
     });
