@@ -83,6 +83,18 @@
   <!-- Login Card -->
   <div class="max-w-md mx-auto w-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden mb-8">
 
+    <!-- Top Switch Tabs: User Login vs Admin Login -->
+    <div class="grid grid-cols-2 p-1.5 bg-slate-100 border-b border-slate-200 gap-1.5">
+      <button type="button" id="tabBtnUser" onclick="showUserLogin()" class="py-2.5 px-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 bg-white text-indigo-600 shadow-sm border border-slate-200/80">
+        <i class="fa-solid fa-user"></i>
+        <span>User Login</span>
+      </button>
+      <button type="button" id="tabBtnAdmin" onclick="showAdminLogin()" class="py-2.5 px-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800">
+        <i class="fa-solid fa-shield-halved text-indigo-600"></i>
+        <span>Admin Login</span>
+      </button>
+    </div>
+
     <!-- User Login Form (Default) -->
     <div id="userLoginFormWrapper" class="p-6 sm:p-8">
       <div class="text-center mb-6">
@@ -192,16 +204,34 @@
 
     function showUserLogin() {
       isAdminView = false;
-      document.getElementById('userLoginFormWrapper').classList.remove('hidden');
-      document.getElementById('adminLoginFormWrapper').classList.add('hidden');
-      document.getElementById('footerAdminToggleText').innerText = 'Admin Portal';
+      const userWrap = document.getElementById('userLoginFormWrapper');
+      const adminWrap = document.getElementById('adminLoginFormWrapper');
+      if (userWrap) userWrap.classList.remove('hidden');
+      if (adminWrap) adminWrap.classList.add('hidden');
+      
+      const tabUser = document.getElementById('tabBtnUser');
+      const tabAdmin = document.getElementById('tabBtnAdmin');
+      if (tabUser) tabUser.className = 'py-2.5 px-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 bg-white text-indigo-600 shadow-sm border border-slate-200/80';
+      if (tabAdmin) tabAdmin.className = 'py-2.5 px-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800';
+
+      const footerText = document.getElementById('footerAdminToggleText');
+      if (footerText) footerText.innerText = 'Admin Portal';
     }
 
     function showAdminLogin() {
       isAdminView = true;
-      document.getElementById('userLoginFormWrapper').classList.add('hidden');
-      document.getElementById('adminLoginFormWrapper').classList.remove('hidden');
-      document.getElementById('footerAdminToggleText').innerText = 'User Login';
+      const userWrap = document.getElementById('userLoginFormWrapper');
+      const adminWrap = document.getElementById('adminLoginFormWrapper');
+      if (userWrap) userWrap.classList.add('hidden');
+      if (adminWrap) adminWrap.classList.remove('hidden');
+
+      const tabUser = document.getElementById('tabBtnUser');
+      const tabAdmin = document.getElementById('tabBtnAdmin');
+      if (tabUser) tabUser.className = 'py-2.5 px-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800';
+      if (tabAdmin) tabAdmin.className = 'py-2.5 px-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-md';
+
+      const footerText = document.getElementById('footerAdminToggleText');
+      if (footerText) footerText.innerText = 'User Login';
     }
 
     function toggleAdminView() {
@@ -212,15 +242,22 @@
       }
     }
 
-    // Check if admin query param is present
+    // Check if admin query param is present on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('admin') === 'true' || window.location.hash === '#admin') {
+        showAdminLogin();
+      }
+    });
+
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('admin') === 'true') {
+    if (urlParams.get('admin') === 'true' || window.location.hash === '#admin') {
       showAdminLogin();
     }
 
     // Auto-redirect if already logged in (Persistent Session)
     async function checkExistingLogin() {
-      if (urlParams.get('admin') === 'true') return;
+      if (urlParams.get('admin') === 'true' || window.location.hash === '#admin') return;
       try {
         const res = await fetch('/api/auth/check-session');
         const data = await res.json();
@@ -258,6 +295,7 @@
       btn.disabled = true;
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Logging in...';
 
+      try {
         const platform = (window.IS_ANDROID_APP || (navigator.userAgent && navigator.userAgent.includes('MapReviewPay-Android-App')) || window.location.search.includes('platform=apk') || (localStorage.getItem('user_platform') === 'apk')) ? 'apk' : 'web';
         const res = await fetch('/api/auth/login', {
           method: 'POST',

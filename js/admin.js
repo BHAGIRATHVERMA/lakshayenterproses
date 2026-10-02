@@ -43,6 +43,26 @@ async function initAdmin() {
   }
 }
 
+function toggleMobileSidebar() {
+  const sidebar = document.getElementById('adminSidebar');
+  const backdrop = document.getElementById('sidebarBackdrop');
+  if (!sidebar) return;
+  if (sidebar.classList.contains('-translate-x-full')) {
+    sidebar.classList.remove('-translate-x-full');
+    if (backdrop) backdrop.classList.remove('hidden');
+  } else {
+    sidebar.classList.add('-translate-x-full');
+    if (backdrop) backdrop.classList.add('hidden');
+  }
+}
+
+function closeMobileSidebar() {
+  const sidebar = document.getElementById('adminSidebar');
+  const backdrop = document.getElementById('sidebarBackdrop');
+  if (sidebar) sidebar.classList.add('-translate-x-full');
+  if (backdrop) backdrop.classList.add('hidden');
+}
+
 function switchAdminTab(tabName) {
   const tabs = ['users', 'tasks', 'yttasks', 'withdrawals', 'links', 'ytlinks', 'watchvideos', 'coupons', 'chat', 'tracker', 'referrals', 'trainingvideo', 'settings'];
   tabs.forEach(t => {
@@ -50,7 +70,7 @@ function switchAdminTab(tabName) {
     const content = document.getElementById(`tabContent_${t}`);
     if (btn && content) {
       if (t === tabName) {
-        btn.className = 'px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-indigo-600 text-white shadow-sm transition-all flex items-center gap-2';
+        btn.className = 'w-full px-3.5 py-3 rounded-2xl font-black text-xs sm:text-sm bg-indigo-600 text-white shadow-md shadow-indigo-600/30 transition-all flex items-center justify-between text-left';
         content.classList.remove('hidden');
         if (t === 'tracker') {
           loadAdminTrackerAnalytics();
@@ -60,11 +80,14 @@ function switchAdminTab(tabName) {
           loadTrainingVideoSettings();
         }
       } else {
-        btn.className = 'px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-slate-600 hover:bg-slate-100 transition-all flex items-center gap-2';
+        btn.className = 'w-full px-3.5 py-3 rounded-2xl font-semibold text-xs sm:text-sm text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all flex items-center justify-between text-left';
         content.classList.add('hidden');
       }
     }
   });
+
+  // Auto close mobile drawer on tab switch
+  closeMobileSidebar();
 }
 
 // -------------------------------------------------------------

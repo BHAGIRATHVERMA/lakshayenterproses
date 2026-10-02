@@ -3095,7 +3095,7 @@
       "discountValue": 100,
       "maxUses": 10,
       "usedCount": 0,
-      "active": true,
+      "active": false,
       "createdAt": "2026-09-13T18:14:56.464Z"
     },
     {
@@ -3105,7 +3105,7 @@
       "discountValue": 100,
       "maxUses": 1000,
       "usedCount": 1,
-      "active": true,
+      "active": false,
       "createdAt": "2026-09-13T18:14:56.447Z"
     },
     {
@@ -3115,7 +3115,7 @@
       "discountValue": 50,
       "maxUses": 1000,
       "usedCount": 0,
-      "active": true,
+      "active": false,
       "createdAt": "2026-09-13T18:14:56.447Z"
     }
   ],

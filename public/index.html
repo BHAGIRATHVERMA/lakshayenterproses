@@ -52,7 +52,7 @@
 <body class="bg-slate-50 min-h-screen flex flex-col justify-between">
 
   <!-- Top Festive Coupon Banner -->
-  <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-slate-950 font-extrabold text-xs py-2 px-4 shadow-sm">
+  <div id="festiveTopBanner" class="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-slate-950 font-extrabold text-xs py-2 px-4 shadow-sm">
     <div class="max-w-7xl mx-auto flex items-center justify-between gap-2">
       <div class="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
         <span class="bg-slate-950 text-amber-400 text-[10px] uppercase font-black px-2 py-0.5 rounded-full animate-pulse flex-shrink-0">🎉 FESTIVE OFFER</span>
@@ -80,7 +80,7 @@
       </div>
 
       <div class="flex items-center gap-3">
-        <button onclick="openFestiveModal()" class="hidden sm:flex text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-xl border border-amber-300 transition-colors items-center gap-1.5">
+        <button id="festiveNavBtn" onclick="openFestiveModal()" class="hidden sm:flex text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-xl border border-amber-300 transition-colors items-center gap-1.5">
           <i class="fa-solid fa-gift text-amber-600"></i> Free Coupon: FREE15OCT
         </button>
         
@@ -1718,6 +1718,14 @@ http://localhost:3000/register.html</textarea>
           festiveCouponCode = data.offer.code;
           const codeEl = document.getElementById('popupCouponCode');
           if (codeEl) codeEl.innerText = data.offer.code;
+        } else {
+          // 15 Oct ke baad ya offer khatam hone par sabhi festive banners automatically hide ho jayenge
+          const topBanner = document.getElementById('festiveTopBanner');
+          if (topBanner) topBanner.style.display = 'none';
+          const navBtn = document.getElementById('festiveNavBtn');
+          if (navBtn) navBtn.style.display = 'none';
+          const floatBtn = document.getElementById('floatingFestiveBtn');
+          if (floatBtn) floatBtn.style.display = 'none';
         }
       } catch (e) {}
     }
