@@ -82,6 +82,7 @@ app.get('/api/ping', (req, res) => {
 
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
 app.use('/uploads', express.static(uploadsDir));
 
 function requireUserAuth(req, res, next) {
