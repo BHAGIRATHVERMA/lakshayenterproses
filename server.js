@@ -316,6 +316,8 @@ app.post('/api/auth/register', (req, res) => {
   // Automatically start user session
   req.session.userId = newUser.id;
 
+  console.log(`[REGISTER] ✅ New user: ${newUser.fullName} | Mobile: ${newUser.mobile} | Plan: ${newUser.planName} | Coupon: ${newUser.couponApplied || 'None'}`);
+
   const successMessage = isFreeRegistration
     ? '🎉 Badhai ho! Free Coupon se aapka account INSTANT ACTIVATE ho gaya hai! Earning shuru karein.'
     : 'Registration successful! Your account is submitted for Admin verification.';
@@ -456,6 +458,8 @@ app.post('/api/auth/google-login', async (req, res) => {
     const userAgent = req.headers['user-agent'] || '';
     const platform = detectClientPlatform(req);
     db.recordUserLogin(user.id, clientIp, userAgent, platform);
+
+    console.log(`[GOOGLE LOGIN] ✅ User: ${user.fullName} | Email: ${user.email} | New: ${result.isNew}`);
 
     return res.json({
       success: true,
@@ -928,6 +932,16 @@ app.get('/api/admin/stats', requireAdminAuth, (req, res) => {
       totalYtLinks: ytLinks.length,
       activeYtLinks: ytLinks.filter(l => l.active).length
     }
+  });
+});
+
+// Database status (MongoDB Atlas Cloud connection check)
+app.get('/api/admin/db-status', requireAdminAuth, (req, res) => {
+  res.json({
+    success: true,
+    mongoConnected: Boolean(db.mongoConnected),
+    totalUsers: db.getUsers().length,
+    timestamp: new Date().toISOString()
   });
 });
 

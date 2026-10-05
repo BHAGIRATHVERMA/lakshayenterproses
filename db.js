@@ -1,6 +1,15 @@
 const fs = require('fs');
 const path = require('path');
 
+let MongoClient = null;
+try {
+  MongoClient = require('mongodb').MongoClient;
+} catch (e) {
+  // MongoDB driver will be auto-installed via package.json on Render
+}
+
+const DEFAULT_MONGODB_URI = 'mongodb+srv://bhagirathverma38_db_user:1OJDqIzogneAQWrj@cluster0.lhdjo0n.mongodb.net/map_earning?retryWrites=true&w=majority&appName=Cluster0';
+
 const DATA_DIR = path.join(__dirname, 'data');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const SCREENSHOTS_DIR = path.join(__dirname, 'uploads', 'screenshots');
@@ -374,7 +383,50 @@ const defaultData = {
 
 class Database {
   constructor() {
+    this.mongoClient = null;
+    this.mongoDb = null;
+    this.mongoConnected = false;
     this.init();
+    this.initMongo();
+  }
+
+  async initMongo() {
+    const uri = process.env.MONGODB_URI || DEFAULT_MONGODB_URI;
+    if (!uri || !MongoClient) {
+      console.log('ℹ️ [Database] MongoDB driver or URI not ready yet, running in local JSON mode.');
+      return;
+    }
+
+    try {
+      console.log('🔄 [Database] Connecting to MongoDB Atlas Cloud...');
+      this.mongoClient = new MongoClient(uri, { serverSelectionTimeoutMS: 8000 });
+      await this.mongoClient.connect();
+      this.mongoDb = this.mongoClient.db('map_earning');
+      this.mongoConnected = true;
+      console.log('✅ [Database] SUCCESSFULLY CONNECTED TO MONGODB ATLAS CLOUD!');
+
+      const col = this.mongoDb.collection('app_state');
+      const doc = await col.findOne({ _id: 'main_db' });
+
+      if (doc && doc.data && Array.isArray(doc.data.users) && doc.data.users.length > 0) {
+        console.log(`📥 [Database] Successfully loaded ${doc.data.users.length} users and live state from MongoDB Cloud!`);
+        this.data = doc.data;
+        try {
+          fs.writeFileSync(DB_FILE, JSON.stringify(this.data, null, 2), 'utf8');
+        } catch (e) {}
+      } else {
+        console.log(`📤 [Database] Seeding MongoDB Cloud with current ${this.data.users.length} users and initial state...`);
+        await col.updateOne(
+          { _id: 'main_db' },
+          { $set: { data: this.data, updatedAt: new Date().toISOString() } },
+          { upsert: true }
+        );
+        console.log('✅ [Database] MongoDB Cloud database seeded successfully!');
+      }
+    } catch (err) {
+      console.error('⚠️ [Database] MongoDB Cloud connection warning:', err.message);
+      this.mongoConnected = false;
+    }
   }
 
   init() {
@@ -433,6 +485,22 @@ class Database {
       fs.writeFileSync(DB_FILE, JSON.stringify(this.data, null, 2), 'utf8');
     } catch (err) {
       console.error('Database save failed:', err);
+    }
+
+    this.syncToMongo();
+  }
+
+  async syncToMongo() {
+    if (!this.mongoConnected || !this.mongoDb) return;
+    try {
+      const col = this.mongoDb.collection('app_state');
+      await col.updateOne(
+        { _id: 'main_db' },
+        { $set: { data: this.data, updatedAt: new Date().toISOString() } },
+        { upsert: true }
+      );
+    } catch (err) {
+      console.error('⚠️ [Database] Cloud sync failed:', err.message);
     }
   }
 
