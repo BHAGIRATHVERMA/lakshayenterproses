@@ -945,6 +945,15 @@ app.get('/api/admin/db-status', requireAdminAuth, (req, res) => {
   });
 });
 
+app.get('/api/public/db-status', (req, res) => {
+  res.json({
+    success: true,
+    mongoConnected: Boolean(db.mongoConnected),
+    totalUsers: db.getUsers().length,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Users management
 app.get('/api/admin/users', requireAdminAuth, (req, res) => {
   const users = db.getUsers();

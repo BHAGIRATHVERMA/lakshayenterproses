@@ -8,7 +8,7 @@ try {
   // MongoDB driver will be auto-installed via package.json on Render
 }
 
-const DEFAULT_MONGODB_URI = 'mongodb+srv://bhagirathverma38_db_user:1OJDqIzogneAQWrj@cluster0.lhdjo0n.mongodb.net/map_earning?retryWrites=true&w=majority&appName=Cluster0';
+const DEFAULT_MONGODB_URI = 'mongodb+srv://bhagirathverma38_db_user:10JDqIzogneAQWrj@cluster0.lhdjo0n.mongodb.net/map_earning?retryWrites=true&w=majority&appName=Cluster0';
 
 const DATA_DIR = path.join(__dirname, 'data');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
